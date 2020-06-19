@@ -25,7 +25,11 @@ setuptools.setup(
         "aws-cdk.aws_lambda",
         "aws-cdk.aws_apigateway",
         "aws-cdk.aws_dynamodb",
-        "aws-cdk.aws_lambda_event_sources"
+        "aws-cdk.aws_lambda_event_sources",
+        "aws-cdk.aws_sns",
+        "aws-cdk.aws_sns_subscriptions",
+        "aws-cdk.aws_ecs",
+        "aws-cdk.aws_ecs_patterns"
     ],
 
     python_requires=">=3.6",
