@@ -89,6 +89,8 @@ def lambda_handler(event, context):
         count = 0
         for chunk in bookContent:
             chunk += "Part " + str(count)
+    hasShortPart = False
+    audioURLs = []
     for chunk in bookContent:
         try:
             chunk = convert_text_to_ssml(chunk)
@@ -102,15 +104,15 @@ def lambda_handler(event, context):
                                                         TextType='ssml',
                                                         VoiceId='Brian'
                                                     )
+            audioURLs.append(['ResponseMetadata']['SynthesisTask']['OutputUri'])
+            if len(chunk) <= 2000:
+                hasShortPart = True
         except Exception as e:
             print("Error parsing chunk or requesting Polly to say it")
             raise
-    if response.get("CreationTime"):
-        # CreationTime is a datetime, need to convert to string or will cause JSON parse error
-        response["CreationTime"] = response["CreationTime"].timestamp()
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "message": response,
+            "message": audioURLs
         }),
     }

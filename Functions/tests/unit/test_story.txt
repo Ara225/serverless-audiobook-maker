@@ -1,7 +1,9 @@
 {
     "bookName": "The Red-Headed League from the Adventures of Sherlock Holmes", 
     "imageURL": "",
-    "authorName": ""
+    "authorName": "",
+    "genres": [],
+    "description": "",
 }
 ------ END METADATA --------
 The Red-Headed League
