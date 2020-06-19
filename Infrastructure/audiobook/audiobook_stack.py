@@ -18,18 +18,18 @@ class AudiobookStack(core.Stack):
             write_capacity=2,
             billing_mode=aws_dynamodb.BillingMode.PROVISIONED
         )
-        aws_lambda.eventS
         # Make function
         book_upload_lambda_function = aws_lambda.Function(self, "HandleBookUploadLambda",
                                               handler='app.lambda_handler',
                                               runtime=aws_lambda.Runtime.PYTHON_3_8,
                                               code=aws_lambda.Code.from_asset(
                                                   '../Functions/handlers/handle_book_upload'),
-                                              )
+                                              timeout=core.Duration.seconds(120))
         book_upload_lambda_function.add_environment("TABLE_NAME", audiobooksDB.table_name)
         audiobooksDB.grant_write_data(book_upload_lambda_function)
         BookUploadBucket = aws_s3.Bucket(self, "BookUploadBucket")
-        book_upload_lambda_function.add_event_source(S3EventSource(BookUploadBucket, {
-                                                      "events": [ aws_s3.EventType.OBJECT_CREATED ],
-                                                      "filters": [ { "suffix": '*txt' } ] 
-                                                    }))
+        book_upload_lambda_function.add_event_source(S3EventSource(BookUploadBucket,
+                                                      events=[ aws_s3.EventType.OBJECT_CREATED ],
+                                                      filters=[ { "suffix": '*txt' } ] 
+                                                    ))
+        BookUploadBucket.grant_read(book_upload_lambda_function)
