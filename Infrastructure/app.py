@@ -2,10 +2,10 @@
 
 from aws_cdk import core
 
-from infrastructure.infrastructure_stack import InfrastructureStack
+from audiobook.audiobook_stack import AudiobookStack
 
 
 app = core.App()
-InfrastructureStack(app, "infrastructure")
+AudiobookStack(app, "audiobook", env={'region': 'eu-west-2'})
 
 app.synth()

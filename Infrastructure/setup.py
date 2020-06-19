@@ -6,7 +6,7 @@ with open("README.md") as fp:
 
 
 setuptools.setup(
-    name="infrastructure",
+    name="audiobook",
     version="0.0.1",
 
     description="An empty CDK Python app",
@@ -15,11 +15,17 @@ setuptools.setup(
 
     author="author",
 
-    package_dir={"": "infrastructure"},
-    packages=setuptools.find_packages(where="infrastructure"),
+    package_dir={"": "audiobook"},
+    packages=setuptools.find_packages(where="audiobook"),
 
     install_requires=[
         "aws-cdk.core==1.45.0",
+        "aws-cdk.aws_iam==1.45.0",
+        "aws-cdk.aws_s3==1.45.0",
+        "aws-cdk.aws_lambda",
+        "aws-cdk.aws_apigateway",
+        "aws-cdk.aws_dynamodb",
+        "aws-cdk.aws_lambda_event_sources"
     ],
 
     python_requires=">=3.6",
