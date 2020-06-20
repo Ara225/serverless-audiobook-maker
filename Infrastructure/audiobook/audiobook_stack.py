@@ -30,7 +30,7 @@ class AudiobookStack(core.Stack):
             billing_mode=aws_dynamodb.BillingMode.PROVISIONED
         )
 
-        # ******* Lambda function
+        # ******* Lambda functions
         book_upload_lambda_function = aws_lambda.Function(self, "HandleBookUploadLambda",
                                                           handler='app.lambda_handler',
                                                           runtime=aws_lambda.Runtime.PYTHON_3_8,
@@ -75,3 +75,33 @@ class AudiobookStack(core.Stack):
         AudioUploadBucket.grant_write(book_upload_lambda_function)
         PollySNSTopic.grant_publish(book_upload_lambda_function)
         book_upload_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["polly:*"], resources=["*"]))
+        
+        # ******* Fargate container permissions
+        role = aws_iam.Role(self, "FargateContainerRole")
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:PutObject"], resources=[VideoUploadBucket.bucket_arn]))
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[AudioUploadBucket.bucket_arn]))
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[BookUploadBucket.bucket_arn]))
+
+        # ******* Fargate container
+        cluster = aws_ecs.Cluster(self, 'FargateCluster')
+        image = aws_ecs.ContainerImage.from_asset("../Functions/ECSContainerFiles")
+        task_definition = aws_ecs.FargateTaskDefinition(
+            self, "FargateContainerTaskDefinition", execution_role=role, task_role=role
+        )
+        container = task_definition.add_container(
+            "Container", image=image
+        )
+        fargate_service = aws_ecs_patterns.ApplicationLoadBalancedFargateService(
+            self, "FargateService", cluster=cluster, task_definition=task_definition
+        )
+        
+        # ******* Audio function environment variables
+        polly_audio_lambda_function.add_environment("VIDEO_S3_BUCKET", VideoUploadBucket.bucket_name)
+        polly_audio_lambda_function.add_environment("TASK_DEFINITION_ARN", task_definition.task_definition_arn)
+        polly_audio_lambda_function.add_environment("CLUSTER_ARN", cluster.cluster_arn)
+        polly_audio_lambda_function.add_environment("TABLE_NAME", audiobooksDB.table_name)
+
+        # ******* Audio function permissions
+        audiobooksDB.grant_read_write_data(polly_audio_lambda_function)
+        polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ecs:RunTask"], resources=["*"]))
+        polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["iam:PassRole"], resources=["*"]))
