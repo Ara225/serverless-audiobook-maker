@@ -21,35 +21,6 @@ def convert_text_to_ssml(chunk):
     chunk = chunk.replace("</p></p>", "</p>").replace("</p>\n</p>", "</p>").replace("<p><p>", "<p>").replace("<p>\n<p>", "<p>")
     return chunk
 
-def readFile(localFileName):
-    """Read from the file, input metadata to database, return file contents
-
-    Args:
-        localFileName (str): Name of the file to read from
-
-    Returns:
-        list: Content of the book in 99990 char chunks
-    """
-    try:
-        metadata = ""
-        with open(localFileName, "r", encoding="utf-8") as book:
-            # Metadata is a object in JSON style 
-            for line in book:
-                if "------ END METADATA --------" not in line:
-                    metadata += line.replace("\r\n", "").replace("\n", "")
-                else:
-                    break
-            #TODO Insert into DB
-            print(json.loads(metadata))
-            # Starts reading from where we left off
-            bookContent = book.read()
-        # Polly accepts 100,000 chars at a time. We make chunks of 99990 because we put the part 1 maker in
-        bookContent = [bookContent[i:i+99990] for i in range(0, len(bookContent), 99990)]
-    except Exception as e:
-        print("Error while reading downloaded file " + str(localFileName))
-        raise
-    return bookContent
-
 def lambda_handler(event, context):
     """Sample pure Lambda function
 
@@ -71,19 +42,24 @@ def lambda_handler(event, context):
 
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
-    s3 = boto3.resource('s3')
+    s3 = boto3.client('s3')
     
-    localFileName = event['Records'][0]['s3']['object']['key'].split("/")[-1]
     s3FileName = event['Records'][0]['s3']['object']['key']
     bucketName = event['Records'][0]['s3']['bucket']['name']
     # Download file from the S3 bucket
     try:
-        s3.Bucket(bucketName).download_file(s3FileName, localFileName)
+        book = s3.get_object(Bucket=bucketName, Key=s3FileName)
+        print("Loading file from S3 bucket")
+        bookContent = book["Body"].read().decode("utf-8", errors="ignore").split("------ END METADATA --------")
+        metadata = bookContent[0]
+        #TODO Insert into DB
+        print(json.loads(metadata))
+        bookContent = bookContent[1]
+        # Polly accepts 100,000 chars at a time. We make chunks of 99990 because we put the part 1 maker in
+        bookContent = [bookContent[i:i+99990] for i in range(0, len(bookContent), 99990)]
     except Exception as e:
         print("Error while downloading file " + s3FileName + "from the S3 bucket " + bucketName)
         raise
-
-    bookContent = readFile(localFileName)
     # Add part marker to book
     if len(bookContent) > 1:
         count = 0
@@ -91,10 +67,11 @@ def lambda_handler(event, context):
             chunk += "Part " + str(count)
     hasShortPart = False
     audioURLs = []
+    pollyClient = boto3.client('polly')
     for chunk in bookContent:
         try:
             chunk = convert_text_to_ssml(chunk)
-            pollyClient = boto3.client('polly')
+            print("Asking Polly to record the current chunk")
             response = pollyClient.start_speech_synthesis_task(
                                                         Engine='standard',
                                                         LanguageCode='en-GB',
@@ -102,11 +79,14 @@ def lambda_handler(event, context):
                                                         OutputS3BucketName=environ['AUDIO_S3_BUCKET'],
                                                         Text=chunk,
                                                         TextType='ssml',
-                                                        VoiceId='Brian'
+                                                        VoiceId='Brian',
+                                                        SnsTopicArn=environ["SNS_TOPIC"],
                                                     )
             audioURLs.append(['ResponseMetadata']['SynthesisTask']['OutputUri'])
             if len(chunk) <= 2000:
                 hasShortPart = True
+            print(response)
+            print("Polly was successfully asked to to record the current chunk")
         except Exception as e:
             print("Error parsing chunk or requesting Polly to say it")
             raise
