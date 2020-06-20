@@ -82,7 +82,8 @@ def lambda_handler(event, context):
                                                         VoiceId='Brian',
                                                         SnsTopicArn=environ["SNS_TOPIC"],
                                                     )
-            audioURLs.append(['ResponseMetadata']['SynthesisTask']['OutputUri'])
+
+            audioURLs.append(response["SynthesisTask"]["OutputUri"])
             if len(chunk) <= 2000:
                 hasShortPart = True
             print(response)
