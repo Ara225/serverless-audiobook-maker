@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get clean
 
 RUN pip install awscli
+WORKDIR /root
+COPY makeVideo.sh makeVideo.sh
 
-COPY ./makeVideo.sh /root
-CMD [ "bash", "-e" ]
-ENTRYPOINT  ["/root/makeVideo.sh"]
+ENTRYPOINT "/root/makeVideo.sh"
