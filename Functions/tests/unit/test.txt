@@ -1,5 +1,5 @@
 {
-    "bookName": "The Red-Headed League from the Adventures of Sherlock Holmes", 
+    "bookName": "The Red-Headed League", 
     "imageURL": "",
     "authorName": "",
     "genres": ["ss"],

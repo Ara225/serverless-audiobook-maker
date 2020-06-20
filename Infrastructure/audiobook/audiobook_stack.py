@@ -46,6 +46,7 @@ class AudiobookStack(core.Stack):
         BookUploadBucket = aws_s3.Bucket(self, "BookUploadBucket")
         AudioUploadBucket = aws_s3.Bucket(self, "AudioUploadBucket")
         VideoUploadBucket = aws_s3.Bucket(self, "VideoUploadBucket")
+        ImageUploadBucket = aws_s3.Bucket(self, "ImageUploadBucket")
 
         # ******* Create S3 event source
         book_upload_lambda_function.add_event_source(S3EventSource(BookUploadBucket,
@@ -77,10 +78,10 @@ class AudiobookStack(core.Stack):
         book_upload_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["polly:*"], resources=["*"]))
         
         # ******* Fargate container permissions
-        role = aws_iam.Role(self, "FargateContainerRole")
+        role = aws_iam.Role(self, "FargateContainerRole", assumed_by=aws_iam.ServicePrincipal("ecs.amazonaws.com"))
         role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:PutObject"], resources=[VideoUploadBucket.bucket_arn]))
         role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[AudioUploadBucket.bucket_arn]))
-        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[BookUploadBucket.bucket_arn]))
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[ImageUploadBucket.bucket_arn]))
 
         # ******* Fargate container
         cluster = aws_ecs.Cluster(self, 'FargateCluster')
@@ -88,9 +89,11 @@ class AudiobookStack(core.Stack):
         task_definition = aws_ecs.FargateTaskDefinition(
             self, "FargateContainerTaskDefinition", execution_role=role, task_role=role
         )
+        port_mapping = aws_ecs.PortMapping(container_port=80, host_port=80)
         container = task_definition.add_container(
             "Container", image=image
         )
+        container.add_port_mappings(port_mapping)
         fargate_service = aws_ecs_patterns.ApplicationLoadBalancedFargateService(
             self, "FargateService", cluster=cluster, task_definition=task_definition
         )
@@ -100,6 +103,7 @@ class AudiobookStack(core.Stack):
         polly_audio_lambda_function.add_environment("TASK_DEFINITION_ARN", task_definition.task_definition_arn)
         polly_audio_lambda_function.add_environment("CLUSTER_ARN", cluster.cluster_arn)
         polly_audio_lambda_function.add_environment("TABLE_NAME", audiobooksDB.table_name)
+        polly_audio_lambda_function.add_environment("CONTAINER_NAME", container.container_name)
 
         # ******* Audio function permissions
         audiobooksDB.grant_read_write_data(polly_audio_lambda_function)

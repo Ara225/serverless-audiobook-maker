@@ -2,6 +2,9 @@ import json
 import boto3
 import botocore
 from os import environ
+from datetime import datetime
+import string
+import random
 
 def convert_text_to_ssml(chunk):
     """Convert text to SSMl for Polly
@@ -42,6 +45,12 @@ def lambda_handler(event, context):
 
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
+    if 'local' == environ.get('APP_STAGE'):
+        dynamodb = boto3.resource('dynamodb', endpoint_url='http://localhost:8000')
+        table = dynamodb.Table("audiobooksDB")
+    else:
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(environ["TABLE_NAME"])
     s3 = boto3.client('s3')
     
     s3FileName = event['Records'][0]['s3']['object']['key']
@@ -51,9 +60,7 @@ def lambda_handler(event, context):
         book = s3.get_object(Bucket=bucketName, Key=s3FileName)
         print("Loading file from S3 bucket")
         bookContent = book["Body"].read().decode("utf-8", errors="ignore").split("------ END METADATA --------")
-        metadata = bookContent[0]
-        #TODO Insert into DB
-        print(json.loads(metadata))
+        metadata = json.loads(bookContent[0])
         bookContent = bookContent[1]
         # Polly accepts 100,000 chars at a time. We make chunks of 99990 because we put the part 1 maker in
         bookContent = [bookContent[i:i+99990] for i in range(0, len(bookContent), 99990)]
@@ -90,6 +97,29 @@ def lambda_handler(event, context):
             print("Polly was successfully asked to to record the current chunk")
         except Exception as e:
             print("Error parsing chunk or requesting Polly to say it")
+            raise
+        try:
+            randomString = ''.join([random.choice(string.ascii_letters 
+            + string.digits) for n in range(32)]) 
+            audiobook = {
+                       "id": randomString,
+                       "bookName": metadata["bookName"],
+                       "imageURL":  metadata["imageURL"],
+                       "authorName":metadata["authorName"],
+                       "genres": metadata["genres"],
+                       "audioURLs":  audioURLs,
+                       "description": metadata["description"],
+                       "hidden": False,
+                       "hasShortPart": hasShortPart,
+                       "addedAt": datetime.now().timestamp() 
+                   }
+            response = table.put_item(
+                Item=audiobook
+            )
+        except Exception as e:
+            print("Exception inserting into database")
+            print(audiobook)
+            print(response)
             raise
     return {
         "statusCode": 200,
