@@ -1,5 +1,15 @@
 from aws_cdk import core
-from aws_cdk import aws_dynamodb, aws_apigateway, aws_lambda, aws_s3, aws_lambda, aws_sns, aws_sns_subscriptions, aws_ecs, aws_ecs_patterns
+from aws_cdk import (aws_dynamodb, 
+                     aws_apigateway, 
+                     aws_lambda, 
+                     aws_s3, 
+                     aws_lambda, 
+                     aws_sns, 
+                     aws_sns_subscriptions, 
+                     aws_ecs, 
+                     aws_ecs_patterns,
+                     aws_iam
+                    )
 from aws_cdk.aws_lambda_event_sources import S3EventSource
 
 
@@ -25,8 +35,7 @@ class AudiobookStack(core.Stack):
                                                           handler='app.lambda_handler',
                                                           runtime=aws_lambda.Runtime.PYTHON_3_8,
                                                           code=aws_lambda.Code.from_asset(
-                                                              '../Functions/handlers/handle_book_upload'),
-                                                          timeout=core.Duration.seconds(120))
+                                                              '../Functions/handlers/handle_book_upload'))
         polly_audio_lambda_function = aws_lambda.Function(self, "HandlePollyAudioLambda",
                                                           handler='app.lambda_handler',
                                                           runtime=aws_lambda.Runtime.PYTHON_3_8,
@@ -49,13 +58,20 @@ class AudiobookStack(core.Stack):
         # ******* Create SNS topic
         PollySNSTopic = aws_sns.Topic(
             self, "PollySNSTopic", display_name="Topic that AWS Polly posts SNS notifications in when it's finished making audio")
-        PollySNSTopic.addSubscription(
+        PollySNSTopic.add_subscription(
             aws_sns_subscriptions.LambdaSubscription(polly_audio_lambda_function))
 
-        # ******* Book function permissions and environment variables
+        # ******* Book function environment variables
         book_upload_lambda_function.add_environment(
             "TABLE_NAME", audiobooksDB.table_name)
         book_upload_lambda_function.add_environment(
             "AUDIO_S3_BUCKET", AudioUploadBucket.bucket_name)
+        book_upload_lambda_function.add_environment(
+            "SNS_TOPIC", PollySNSTopic.topic_arn)
+
+        # ******* Book function permissions
         audiobooksDB.grant_write_data(book_upload_lambda_function)
         BookUploadBucket.grant_read(book_upload_lambda_function)
+        AudioUploadBucket.grant_write(book_upload_lambda_function)
+        PollySNSTopic.grant_publish(book_upload_lambda_function)
+        book_upload_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["polly:*"], resources=["*"]))
