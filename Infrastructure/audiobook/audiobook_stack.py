@@ -54,11 +54,10 @@ class AudiobookStack(core.Stack):
                                                                    events=[
                                                                        aws_s3.EventType.OBJECT_CREATED],
                                                                    filters=[
-                                                                       {"suffix": '*txt'}]
+                                                                       {"suffix": '.txt'}]
                                                                    ))
         # ******* Create SNS topic
-        PollySNSTopic = aws_sns.Topic(
-            self, "PollySNSTopic", display_name="Topic that AWS Polly posts SNS notifications in when it's finished making audio")
+        PollySNSTopic = aws_sns.Topic(self, "PollySNSTopic")
         PollySNSTopic.add_subscription(
             aws_sns_subscriptions.LambdaSubscription(polly_audio_lambda_function))
 
@@ -111,4 +110,4 @@ class AudiobookStack(core.Stack):
         audiobooksDB.grant_read_write_data(polly_audio_lambda_function)
         polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ecs:RunTask"], resources=["*"]))
         polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["iam:PassRole"], resources=["*"]))
-        polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ec2:DescribeSubnets "], resources=["*"]))
+        polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ec2:DescribeSubnets"], resources=["*"]))

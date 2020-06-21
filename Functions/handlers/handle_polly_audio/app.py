@@ -44,7 +44,7 @@ def lambda_handler(event, context):
         )
     if response['Items'] == []:
         raise Exception("No matching items found in database")
-    item = json.loads(response['Items'][0])
+    item = response['Items'][0]
     client = boto3.client('ecs')
     ec2 = boto3.resource('ec2')
     vpc = ec2.Vpc(environ["VPC_ID"]) 
@@ -78,12 +78,12 @@ def lambda_handler(event, context):
                                     'name': 'BOOK_NAME',
                                     'value': item["bookName"]
                                 }
-                            ],
-                            'cpu': 1024,
-                            'memory': 5120,
+                            ]
                         },
                     ]
                 },
+                cpu="1024",
+                memory="5120",
                 taskDefinition=environ["TASK_DEFINITION_ARN"]
             )
 
