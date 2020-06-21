@@ -8,10 +8,11 @@ from aws_cdk import (aws_dynamodb,
                      aws_sns_subscriptions, 
                      aws_ecs, 
                      aws_ecs_patterns,
-                     aws_iam
+                     aws_iam,
+                     aws_ec2
                     )
 from aws_cdk.aws_lambda_event_sources import S3EventSource
-
+import boto3
 
 class AudiobookStack(core.Stack):
 
@@ -55,7 +56,6 @@ class AudiobookStack(core.Stack):
                                                                    filters=[
                                                                        {"suffix": '*txt'}]
                                                                    ))
-
         # ******* Create SNS topic
         PollySNSTopic = aws_sns.Topic(
             self, "PollySNSTopic", display_name="Topic that AWS Polly posts SNS notifications in when it's finished making audio")
@@ -78,13 +78,14 @@ class AudiobookStack(core.Stack):
         book_upload_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["polly:*"], resources=["*"]))
         
         # ******* Fargate container permissions
-        role = aws_iam.Role(self, "FargateContainerRole", assumed_by=aws_iam.ServicePrincipal("ecs.amazonaws.com"))
+        role = aws_iam.Role(self, "FargateContainerRole", assumed_by=aws_iam.ServicePrincipal("ecs-tasks.amazonaws.com"))
         role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:PutObject"], resources=[VideoUploadBucket.bucket_arn]))
         role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[AudioUploadBucket.bucket_arn]))
         role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[ImageUploadBucket.bucket_arn]))
 
         # ******* Fargate container
-        cluster = aws_ecs.Cluster(self, 'FargateCluster')
+        vpc = aws_ec2.Vpc(self, "CdkFargateVpc", max_azs=2)
+        cluster = aws_ecs.Cluster(self, 'FargateCluster', vpc=vpc)
         image = aws_ecs.ContainerImage.from_asset("../Functions/ECSContainerFiles")
         task_definition = aws_ecs.FargateTaskDefinition(
             self, "FargateContainerTaskDefinition", execution_role=role, task_role=role
@@ -104,6 +105,7 @@ class AudiobookStack(core.Stack):
         polly_audio_lambda_function.add_environment("CLUSTER_ARN", cluster.cluster_arn)
         polly_audio_lambda_function.add_environment("TABLE_NAME", audiobooksDB.table_name)
         polly_audio_lambda_function.add_environment("CONTAINER_NAME", container.container_name)
+        polly_audio_lambda_function.add_environment("VPC_ID", str(vpc.vpc_id))
 
         # ******* Audio function permissions
         audiobooksDB.grant_read_write_data(polly_audio_lambda_function)

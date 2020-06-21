@@ -33,21 +33,29 @@ def lambda_handler(event, context):
     if message['taskStatus'] != "COMPLETED":
         print(event)
         raise Exception("Task is not completed")
-    response = table.query(
-       FilterExpression=Attr("audioURLs").contains(message["outputUri"])
+    response = table.scan(
+       FilterExpression=Attr("audioURLs").contains(message["outputUri"].split("amazonaws.com/")[-1])
     )
     # While there are more items to evaluate and we haven't found the right one yet
     while response['Items'] == [] and response.get("LastEvaluatedKey"):
         response = table.query(
            ExclusiveStartKey=response["LastEvaluatedKey"],
-           FilterExpression=Attr("audioURLs").contains(message["outputUri"])
+           FilterExpression=Attr("audioURLs").contains(message["outputUri"].split("amazonaws.com/")[-1])
         )
 
     item = json.loads(response['Items'][0])
     client = boto3.client('ecs')
+    ec2 = boto3.resource('ec2')
+    vpc = ec2.Vpc(environ["VPC_ID"]) 
     response = client.run_task(
                 cluster=environ["CLUSTER_ARN"],
                 launchType='FARGATE',
+                networkConfiguration={
+                    'awsvpcConfiguration': {
+                        'subnets': [i.id for i in vpc.subnets.all()],
+                        'assignPublicIp': 'ENABLED'
+                    }
+                },
                 overrides={
                     'containerOverrides': [
                         {

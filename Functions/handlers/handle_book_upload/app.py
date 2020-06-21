@@ -5,7 +5,7 @@ from os import environ
 from datetime import datetime
 import string
 import random
-
+from decimal import Decimal
 def convert_text_to_ssml(chunk):
     """Convert text to SSMl for Polly
 
@@ -45,6 +45,7 @@ def lambda_handler(event, context):
 
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
+    print("Function triggered")
     if 'local' == environ.get('APP_STAGE'):
         dynamodb = boto3.resource('dynamodb', endpoint_url='http://localhost:8000')
         table = dynamodb.Table("audiobooksDB")
@@ -90,7 +91,7 @@ def lambda_handler(event, context):
                                                         SnsTopicArn=environ["SNS_TOPIC"],
                                                     )
 
-            audioURLs.append(response["SynthesisTask"]["OutputUri"])
+            audioURLs.append(response["SynthesisTask"]["OutputUri"].split("amazonaws.com/")[-1])
             if len(chunk) <= 2000:
                 hasShortPart = True
             print(response)
@@ -111,7 +112,7 @@ def lambda_handler(event, context):
                        "description": metadata["description"],
                        "hidden": False,
                        "hasShortPart": hasShortPart,
-                       "addedAt": datetime.now().timestamp() 
+                       "addedAt": Decimal(datetime.now().timestamp())
                    }
             response = table.put_item(
                 Item=audiobook
