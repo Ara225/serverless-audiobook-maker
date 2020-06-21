@@ -54,7 +54,7 @@ def lambda_handler(event, context):
         table = dynamodb.Table(environ["TABLE_NAME"])
     s3 = boto3.client('s3')
     
-    s3FileName = event['Records'][0]['s3']['object']['key']
+    s3FileName = event['Records'][0]['s3']['object']['key'].replace("+", " ")
     bucketName = event['Records'][0]['s3']['bucket']['name']
     # Download file from the S3 bucket
     try:

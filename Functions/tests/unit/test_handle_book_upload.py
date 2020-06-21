@@ -6,11 +6,9 @@ from os import environ
 from handlers.handle_book_upload import app as bookUpload
 
 def test_handle_books():
-    ret = bookUpload.lambda_handler(json.load(open("../events/bookUploadEvent.json")), "")
-    data = json.loads(ret["body"])
-    assert ret["statusCode"] == 200
+    ret = bookUpload.convert_text_to_ssml("hello\n\nhello\n\n")
+    assert ret == "<speak><amazon:auto-breaths><p>hello</p><p>hello</p></amazon:auto-breaths></speak>"
 
 if __name__ == "__main__":
-    environ['AUDIO_S3_BUCKET'] = "aws-polly-test"
     environ['APP_STAGE'] = "local"
     pytest.main()

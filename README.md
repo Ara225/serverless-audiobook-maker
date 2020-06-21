@@ -5,7 +5,13 @@ Serverless application which converts text to audio, and creates a simple video 
 * ./Infrastructure - the definition of the infrastructure needed to run this application using AWS's CDK framework
 * ./Functions - contains the actual application code, resources for running locally, and the definition for the video processing container
 
-## Application Flow
+## Deploy 
+#### Requires
+* AWS cli
+* AWS ADK
+```bash
+cd Infr
+```
 
 ## Technical details/Notes
 ### Container

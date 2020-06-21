@@ -12,7 +12,6 @@ from aws_cdk import (aws_dynamodb,
                      aws_ec2
                     )
 from aws_cdk.aws_lambda_event_sources import S3EventSource
-import boto3
 
 class AudiobookStack(core.Stack):
 

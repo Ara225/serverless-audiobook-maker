@@ -19,9 +19,9 @@ setuptools.setup(
     packages=setuptools.find_packages(where="audiobook"),
 
     install_requires=[
-        "aws-cdk.core==1.45.0",
-        "aws-cdk.aws_iam==1.45.0",
-        "aws-cdk.aws_s3==1.45.0",
+        "aws-cdk.core",
+        "aws-cdk.aws_iam",
+        "aws-cdk.aws_s3",
         "aws-cdk.aws_lambda",
         "aws-cdk.aws_apigateway",
         "aws-cdk.aws_dynamodb",
