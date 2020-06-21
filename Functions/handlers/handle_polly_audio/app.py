@@ -23,6 +23,7 @@ def lambda_handler(event, context):
 
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
+    print("Function invoked")
     if 'local' == environ.get('APP_STAGE'):
         dynamodb = boto3.resource('dynamodb', endpoint_url='http://localhost:8000')
         table = dynamodb.Table("audiobooksDB")
@@ -33,6 +34,7 @@ def lambda_handler(event, context):
     if message['taskStatus'] != "COMPLETED":
         print(event)
         raise Exception("Task is not completed")
+    print("Querying table")
     response = table.scan(
        FilterExpression=Attr("audioURLs").contains(message["outputUri"].replace("s3://", ""))
     )
@@ -44,10 +46,39 @@ def lambda_handler(event, context):
         )
     if response['Items'] == []:
         raise Exception("No matching items found in database")
+    else:
+        print(response['Items'])
     item = response['Items'][0]
+    ContainerOverrides = {
+                              'containerOverrides': [
+                                  {
+                                      'name': environ["CONTAINER_NAME"],
+                                      'environment': [
+                                          {
+                                              'name': 'VIDEO_S3_BUCKET',
+                                              'value': environ['VIDEO_S3_BUCKET']
+                                          },
+                                          {
+                                              'name': 'AUDIO_URL',
+                                              'value': message["outputUri"].replace("s3://", "")
+                                          },
+                                          {
+                                              'name': 'IMAGE_URL',
+                                              'value': item["imageURL"]
+                                          },
+                                          {
+                                              'name': 'BOOK_NAME',
+                                              'value': item["bookName"]
+                                          }
+                                      ]
+                                  },
+                              ]
+                          }
+    print(ContainerOverrides)
     client = boto3.client('ecs')
     ec2 = boto3.resource('ec2')
     vpc = ec2.Vpc(environ["VPC_ID"]) 
+    print("Invoking ECS task")
     response = client.run_task(
                 cluster=environ["CLUSTER_ARN"],
                 launchType='FARGATE',
@@ -57,33 +88,7 @@ def lambda_handler(event, context):
                         'assignPublicIp': 'ENABLED'
                     }
                 },
-                overrides={
-                    'containerOverrides': [
-                        {
-                            'name': environ["CONTAINER_NAME"],
-                            'environment': [
-                                {
-                                    'name': 'VIDEO_S3_BUCKET',
-                                    'value': environ['VIDEO_S3_BUCKET']
-                                },
-                                {
-                                    'name': 'AUDIO_URL',
-                                    'value': message["outputUri"]
-                                },
-                                {
-                                    'name': 'IMAGE_URL',
-                                    'value': item["imageURL"]
-                                },
-                                {
-                                    'name': 'BOOK_NAME',
-                                    'value': item["bookName"]
-                                }
-                            ]
-                        },
-                    ]
-                },
-                cpu="1024",
-                memory="5120",
+                overrides=ContainerOverrides,
                 taskDefinition=environ["TASK_DEFINITION_ARN"]
             )
 

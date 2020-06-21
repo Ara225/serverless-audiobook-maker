@@ -41,7 +41,8 @@ class AudiobookStack(core.Stack):
                                                           handler='app.lambda_handler',
                                                           runtime=aws_lambda.Runtime.PYTHON_3_8,
                                                           code=aws_lambda.Code.from_asset(
-                                                              '../Functions/handlers/handle_polly_audio'))
+                                                              '../Functions/handlers/handle_polly_audio'), 
+                                                          timeout=core.Duration.seconds(120))
 
         # ******* S3 upload buckets
         BookUploadBucket = aws_s3.Bucket(self, "BookUploadBucket")
@@ -78,25 +79,24 @@ class AudiobookStack(core.Stack):
         
         # ******* Fargate container permissions
         role = aws_iam.Role(self, "FargateContainerRole", assumed_by=aws_iam.ServicePrincipal("ecs-tasks.amazonaws.com"))
-        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:PutObject"], resources=[VideoUploadBucket.bucket_arn]))
-        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[AudioUploadBucket.bucket_arn]))
-        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[ImageUploadBucket.bucket_arn]))
-
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:PutObject"], resources=[VideoUploadBucket.bucket_arn+"/*"]))
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[AudioUploadBucket.bucket_arn+"/*"]))
+        role.add_to_policy(aws_iam.PolicyStatement(actions=["s3:GetObject"], resources=[ImageUploadBucket.bucket_arn+"/*"]))
+        
         # ******* Fargate container
         vpc = aws_ec2.Vpc(self, "CdkFargateVpc", max_azs=2)
         cluster = aws_ecs.Cluster(self, 'FargateCluster', vpc=vpc)
         image = aws_ecs.ContainerImage.from_asset("../Functions/ECSContainerFiles")
         task_definition = aws_ecs.FargateTaskDefinition(
-            self, "FargateContainerTaskDefinition", execution_role=role, task_role=role
+            self, "FargateContainerTaskDefinition", execution_role=role, task_role=role, cpu=1024, memory_limit_mib=3072
         )
+        
         port_mapping = aws_ecs.PortMapping(container_port=80, host_port=80)
         container = task_definition.add_container(
-            "Container", image=image
+            "Container", image=image,
+            logging=aws_ecs.AwsLogDriver(stream_prefix="videoProcessingContainer")
         )
         container.add_port_mappings(port_mapping)
-        fargate_service = aws_ecs_patterns.ApplicationLoadBalancedFargateService(
-            self, "FargateService", cluster=cluster, task_definition=task_definition
-        )
         
         # ******* Audio function environment variables
         polly_audio_lambda_function.add_environment("VIDEO_S3_BUCKET", VideoUploadBucket.bucket_name)
