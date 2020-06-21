@@ -34,15 +34,16 @@ def lambda_handler(event, context):
         print(event)
         raise Exception("Task is not completed")
     response = table.scan(
-       FilterExpression=Attr("audioURLs").contains(message["outputUri"].split("amazonaws.com/")[-1])
+       FilterExpression=Attr("audioURLs").contains(message["outputUri"].replace("s3://", ""))
     )
     # While there are more items to evaluate and we haven't found the right one yet
     while response['Items'] == [] and response.get("LastEvaluatedKey"):
         response = table.query(
            ExclusiveStartKey=response["LastEvaluatedKey"],
-           FilterExpression=Attr("audioURLs").contains(message["outputUri"].split("amazonaws.com/")[-1])
+           FilterExpression=Attr("audioURLs").contains(message["outputUri"].replace("s3://", ""))
         )
-
+    if response['Items'] == []:
+        raise Exception("No matching items found in database")
     item = json.loads(response['Items'][0])
     client = boto3.client('ecs')
     ec2 = boto3.resource('ec2')

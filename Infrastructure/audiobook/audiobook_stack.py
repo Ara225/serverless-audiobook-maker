@@ -111,3 +111,4 @@ class AudiobookStack(core.Stack):
         audiobooksDB.grant_read_write_data(polly_audio_lambda_function)
         polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ecs:RunTask"], resources=["*"]))
         polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["iam:PassRole"], resources=["*"]))
+        polly_audio_lambda_function.add_to_role_policy(aws_iam.PolicyStatement(actions=["ec2:DescribeSubnets "], resources=["*"]))

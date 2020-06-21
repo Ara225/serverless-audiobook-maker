@@ -1,6 +1,6 @@
 {
     "bookName": "The Red-Headed League", 
-    "imageURL": "audiobook-imageuploadbucket49d95137-1ihqkgsvhj9cu/A_Scandal_in_Bohemia-04.jpg",
+    "imageURL": "audiobook-imageuploadbucket49d95137-yv28ka4kfodk/A_Scandal_in_Bohemia-04.jpg",
     "authorName": "Arthur Conan Doyle",
     "genres": ["mystery", "adventure"],
     "description": ""
