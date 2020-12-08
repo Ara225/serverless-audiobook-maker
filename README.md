@@ -38,9 +38,9 @@ Serverless application which converts text to audio, and creates a simple video 
 
 ## Deploy 
 #### Requires
-* AWS cli
-* AWS ADK (see AWS website for setup)
-* Python3 and pip
+* AWS CLI
+* AWS CDK (see AWS website for setup)
+* Python 3 and pip
 #### Commands
 ```bash
 cd Infrastructure
